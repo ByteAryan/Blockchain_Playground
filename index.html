@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blockchain Playground</title>
+<style>
+:root{--bg:#eef0ff;--ink:#1f2350;--mut:#666c94;--pri:#5b3df5;--gold:#f5b301;--ok:#12a150;--okbg:#e6f7ee;--bad:#e5334b;--badbg:#fdeaee;--card:#fff;--line:#d9dcf5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Trebuchet MS",system-ui,sans-serif}
+main{max-width:1040px;margin:0 auto;padding:16px 16px 90px}
+h1{margin:0;font-size:26px}h2{font-size:18px;margin:0 0 10px}
+section{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:10px 16px;background:var(--pri);color:#fff;cursor:pointer;transition:transform .12s}
+button:hover:not(:disabled){transform:translateY(-2px)}button:disabled{opacity:.45;cursor:not-allowed}
+button.ghost{background:#fff;color:var(--ink);border:2px solid var(--line)}
+:focus-visible{outline:3px solid #a99bff;outline-offset:2px}
+.mono{font-family:Consolas,monospace;font-size:12px;word-break:break-all}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+#coach{background:var(--pri);color:#fff;border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+#coach .msg{flex:1 1 280px;font-size:18px;font-weight:700}#coach button{background:#fff;color:var(--pri)}
+#dots{display:flex;gap:6px;width:100%}#dots i{flex:1;height:8px;border-radius:4px;background:#ffffff55}#dots i.d{background:#fff}#dots i.c{background:var(--gold)}
+#people{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}@media(max-width:700px){#people{grid-template-columns:repeat(2,1fr)}}
+.person{border:3px solid var(--line);border-radius:16px;padding:12px;text-align:center;cursor:grab;background:#fafaff;user-select:none;transition:.15s}
+.person:hover{border-color:var(--pri)}.person.sel{border-color:var(--pri);background:#efeaff;transform:scale(1.04)}.person.over{border-color:var(--gold);background:#fff8e0}
+.av{font-size:44px;line-height:1.1}.bal{font-size:24px;font-weight:800}.bump{animation:bump .6s}
+@keyframes bump{40%{transform:scale(1.25);color:var(--ok)}}
+#pool{margin-top:12px;border:3px dashed var(--pri);border-radius:16px;padding:10px 14px;min-height:64px;background:#f6f4ff}
+.chip{display:inline-block;background:#fff;border:2px solid var(--gold);border-radius:20px;padding:4px 12px;margin:4px 6px 0 0;font-weight:700}
+#panel{border-color:var(--pri)}.big{font-size:34px;font-weight:800;text-align:center}
+#panel input[type=range],#diff{width:100%;accent-color:var(--pri)}.row{display:flex;gap:10px;flex-wrap:wrap}
+.shake{animation:shake .4s}@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+#hashView{font:700 15px Consolas,monospace;word-break:break-all;background:#14163a;color:#b9bdf0;border-radius:12px;padding:12px;min-height:60px}
+#hashView .z{color:#3ddc84}
+#meter{height:12px;background:var(--line);border-radius:6px;overflow:hidden;margin:10px 0}#meter div{height:100%;width:0;background:linear-gradient(90deg,var(--pri),var(--gold))}
+#chain{display:flex;align-items:stretch;overflow-x:auto;padding:8px 2px 12px}
+.block{flex:0 0 240px;border:3px solid var(--ok);border-radius:14px;padding:12px;background:var(--okbg);animation:pop .5s}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+.block.bad{border-color:var(--bad);background:var(--badbg);animation:flash .6s var(--d) both}
+@keyframes flash{50%{transform:scale(1.05)}}
+.block h3{margin:0 0 6px;font-size:16px}.block input{width:74px;padding:3px 6px;border:2px solid var(--gold);border-radius:8px;font:inherit;background:#fff}
+.kv{font-size:13px;color:var(--mut);margin-top:5px}.flag{color:var(--bad);font-weight:700;font-size:13px;margin-top:6px}
+.link{flex:0 0 46px;display:flex;align-items:center;justify-content:center;font-size:24px}
+.pill{border-radius:20px;padding:3px 12px;font-weight:700;font-size:14px}.pill.ok{background:var(--okbg);color:var(--ok)}.pill.bad{background:var(--badbg);color:var(--bad)}
+.gl button{margin:0 6px 6px 0;padding:6px 12px;font-size:14px}#gloss{background:#f6f4ff;border-radius:12px;padding:10px 12px;min-height:48px}
+#log div{padding:5px 0;border-bottom:1px solid var(--line);font-size:14px}#log .bad{color:var(--bad)}#log .good{color:var(--ok)}
+.pulse{animation:pulse 1.2s infinite;border-radius:16px}@keyframes pulse{50%{box-shadow:0 0 0 8px #f5b30188}}
+.coin{position:fixed;left:0;top:0;margin:-14px 0 0 -14px;font-size:28px;z-index:60;pointer-events:none}
+.conf{position:fixed;top:-30px;font-size:26px;z-index:70;pointer-events:none;animation:fall 2.4s linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:24px;max-width:92vw;opacity:0;transition:opacity .25s;z-index:80;pointer-events:none;text-align:center}
+#toast.on{opacity:1}#toast.bad{background:var(--bad)}#toast.good{background:var(--ok)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><h1>⛓ Blockchain Playground</h1><button class="ghost" id="resetBtn">Start over</button></div>
+
+  <div id="coach"><div class="msg" id="coachText"></div><button id="skipBtn">Skip step</button><button id="hideBtn">Hide guide</button><div id="dots"></div></div>
+
+  <section>
+    <h2>The people <span class="mono" style="font-weight:400">drag one onto another, or tap two people</span></h2>
+    <div id="people"></div>
+    <div id="pool"><b>📬 Mempool</b> <span class="mono">payments waiting for a miner</span><div id="poolTx"></div></div>
+  </section>
+
+  <section id="panel" hidden>
+    <h2 id="pTitle"></h2>
+    <div class="big" id="amtView"></div>
+    <input type="range" id="slider" min="0" max="100" value="10" aria-label="Amount to send">
+    <div class="row" style="margin-top:10px"><button id="goBtn">Sign and send 🪙</button><button class="ghost" id="overBtn">Try overspending</button><button class="ghost" id="cancelBtn">Cancel</button></div>
+  </section>
+
+  <section>
+    <h2>⛏ The miner</h2>
+    <div id="hashView">Waiting for work. Press Mine block.</div>
+    <div id="meter"><div></div></div>
+    <div class="mono" id="tries" style="margin-bottom:10px"></div>
+    <label for="diff"><b>Difficulty:</b> the hash must start with <b id="zeros"></b> <span id="odds" class="mono"></span></label>
+    <input type="range" id="diff" min="1" max="4" value="3">
+    <p style="margin:12px 0 0"><button id="mineBtn">⛏ Mine block</button></p>
+  </section>
+
+  <section>
+    <div class="top"><h2 style="margin:0">🔗 The blockchain</h2><span class="pill ok" id="status"></span></div>
+    <div id="chain"></div>
+    <div class="mono">Tip: click any amount inside a block to cheat, then see what breaks.</div>
+  </section>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">
+    <section class="gl"><h2>📖 What does that word mean?</h2><div id="glBtns"></div><div id="gloss">Tap a word.</div></section>
+    <section><h2>Play-by-play</h2><div id="log"></div></section>
+  </div>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+//SHA-START
+const K=[],H0=[];
+(function(){let n=2,c=0;while(c<64){let p=true;for(let i=2;i*i<=n;i++)if(n%i==0){p=false;break}if(p){if(c<8)H0[c]=(Math.pow(n,.5)%1)*4294967296|0;K[c]=(Math.cbrt(n)%1)*4294967296|0;c++}n++}})();
+function sha256(s){
+  const b=new TextEncoder().encode(s),l=b.length,n=((l+9+63)>>6)<<6,m=new Uint8Array(n);
+  m.set(b);m[l]=0x80;const dv=new DataView(m.buffer);
+  dv.setUint32(n-4,(l*8)>>>0);dv.setUint32(n-8,Math.floor(l*8/4294967296));
+  let h=H0.slice();const w=new Int32Array(64);const r=(x,k)=>(x>>>k)|(x<<(32-k));
+  for(let o=0;o<n;o+=64){
+    for(let i=0;i<16;i++)w[i]=dv.getInt32(o+i*4);
+    for(let i=16;i<64;i++){const s0=r(w[i-15],7)^r(w[i-15],18)^(w[i-15]>>>3),s1=r(w[i-2],17)^r(w[i-2],19)^(w[i-2]>>>10);w[i]=(w[i-16]+s0+w[i-7]+s1)|0;}
+    let [a,b2,c,d,e,f,g,hh]=h;
+    for(let i=0;i<64;i++){
+      const S1=r(e,6)^r(e,11)^r(e,25),ch=(e&f)^(~e&g),t1=(hh+S1+ch+K[i]+w[i])|0;
+      const S0=r(a,2)^r(a,13)^r(a,22),mj=(a&b2)^(a&c)^(b2&c),t2=(S0+mj)|0;
+      hh=g;g=f;f=e;e=(d+t1)|0;d=c;c=b2;b2=a;a=(t1+t2)|0;
+    }
+    h=[(h[0]+a)|0,(h[1]+b2)|0,(h[2]+c)|0,(h[3]+d)|0,(h[4]+e)|0,(h[5]+f)|0,(h[6]+g)|0,(h[7]+hh)|0];
+  }
+  return h.map(x=>(x>>>0).toString(16).padStart(8,"0")).join("");
+}
+//SHA-END
+
+const NAMES=["Alice","Bob","Carol","Dave"],AV={Alice:"🦊",Bob:"🐼",Carol:"🐸",Dave:"🦉"},START={Alice:100,Bob:50,Carol:25,Dave:0};
+const GLOSS={Hash:"A fingerprint of data. Same data gives the same fingerprint; change one character and it looks completely different.",
+Nonce:"A number the miner keeps changing until the block's hash meets the difficulty target.",
+Mempool:"A waiting room for payments that are signed but not yet in a block.",
+"Proof of work":"Guessing nonces until the hash starts with enough zeros. It is costly to do but instant to check, which protects the chain.",
+Signature:"Proof that a payment came from the key owner, without revealing the key.",
+Block:"A bundle of confirmed payments plus the hash of the block before it. That link is what forms a chain."};
+const LESSONS=[
+ {t:"Send your first payment: drag Alice onto Bob, or tap Alice and then Bob.",tg:"#people",ok:()=>pending.length>0||chain.length>1},
+ {t:"Your payment is waiting in the mempool. Press Mine block to confirm it.",tg:"#mineBtn",ok:()=>chain.length>1},
+ {t:"Try to cheat the balance: start a payment and press Try overspending.",tg:"#people",ok:()=>F.rej},
+ {t:"Now try to cheat history: click an amount inside any block and change it.",tg:"#chain",ok:()=>F.broke},
+ {t:"See the red blocks? Press Re-mine on them, one by one, to repair the chain.",tg:"#chain",ok:()=>F.broke&&valid()},
+ {t:"Last one: slide difficulty to 4 and mine a block to feel proof-of-work.",tg:"#diff",ok:()=>F.hard}];
+const RM=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $=id=>document.getElementById(id),short=h=>h.slice(0,10)+"...";
+const secret={};NAMES.forEach(n=>secret[n]=sha256("secret-"+n).slice(0,16));
+const addr=n=>"0x"+sha256("pub-"+secret[n]).slice(0,8);
+let chain=[],pending=[],logs=[],mining=false,txN=0,sel=null,PS=null,step=0,guide=true,F={},prev={},ripple=0,tt;
+
+const hashBlock=b=>sha256(b.index+"|"+b.prev+"|"+JSON.stringify(b.txs)+"|"+b.nonce);
+function say(m,c=""){logs.unshift({m,c});logs=logs.slice(0,25);const t=$("toast");t.textContent=m;t.className="on "+c;clearTimeout(tt);tt=setTimeout(()=>t.className="",4200);}
+function balances(p){const b={};NAMES.forEach(n=>b[n]=0);chain.forEach(x=>x.txs.forEach(t=>{if(t.from!=="Network")b[t.from]-=t.amt;b[t.to]+=t.amt}));if(p)pending.forEach(t=>b[t.from]-=t.amt);return b;}
+function status(){return chain.map((b,i)=>{const ownOk=hashBlock(b)===b.hash&&b.hash.startsWith("0".repeat(b.diff)),linkOk=i===0||b.prev===hashBlock(chain[i-1]);return{ownOk,linkOk,ok:ownOk&&linkOk}});}
+const valid=()=>status().every(s=>s.ok);
+function newBlock(txs,diff){const p=chain[chain.length-1];return{index:chain.length,prev:p?p.hash:"0".repeat(64),txs,nonce:0,diff,hash:""};}
+
+function fly(a,b,txt){if(RM||!a||!b)return Promise.resolve();
+  const r1=a.getBoundingClientRect(),r2=b.getBoundingClientRect(),c=document.createElement("div");
+  c.className="coin";c.textContent=txt||"🪙";document.body.appendChild(c);
+  const x1=r1.left+r1.width/2,y1=r1.top+r1.height/2,x2=r2.left+r2.width/2,y2=r2.top+r2.height/2;
+  return c.animate([{transform:`translate(${x1}px,${y1}px)`},{transform:`translate(${(x1+x2)/2}px,${Math.min(y1,y2)-70}px) scale(1.6)`},{transform:`translate(${x2}px,${y2}px)`}],{duration:750,easing:"ease-in-out"}).finished.then(()=>c.remove());}
+const P=n=>document.querySelector(`[data-n="${n}"]`);
+function confetti(){if(RM)return;for(let i=0;i<40;i++){const e=document.createElement("div");e.className="conf";e.textContent=["🎉","⭐","🪙","✨"][i%4];e.style.left=Math.random()*100+"vw";e.style.animationDelay=Math.random()*.8+"s";document.body.appendChild(e);setTimeout(()=>e.remove(),3500);}}
+
+function showHash(h,tries,exp){let k=0;while(h[k]==="0")k++;
+  $("hashView").innerHTML=`<span class="z">${h.slice(0,k)}</span>${h.slice(k)}`;
+  $("meter").firstChild.style.width=Math.min(100,tries/exp*100)+"%";
+  $("tries").textContent=`Tried ${tries.toLocaleString()} nonces. On average this difficulty needs about ${exp.toLocaleString()}.`;}
+function mine(block,done){mining=true;block.nonce=0;render();let tries=0,last="",z="0".repeat(block.diff),exp=16**block.diff;
+  (function frame(){for(let i=0;i<150;i++){last=hashBlock(block);tries++;
+    if(last.startsWith(z)){block.hash=last;showHash(last,tries,exp);mining=false;done(tries);return}
+    block.nonce++;}
+    showHash(last,tries,exp);requestAnimationFrame(frame);})();}
+
+function pick(n){if(mining)return;if(!sel)sel=n;else if(sel===n)sel=null;else{openSend(sel,n);sel=null}render();}
+function openSend(f,t){PS={f,t};const sp=Math.max(0,balances(true)[f]),s=$("slider");s.max=sp;s.value=Math.min(10,sp);
+  $("panel").hidden=false;$("pTitle").textContent=`${AV[f]} ${f}  →  ${AV[t]} ${t}   (can spend ${sp})`;$("goBtn").disabled=sp<1;upd();$("panel").scrollIntoView({block:"nearest",behavior:RM?"auto":"smooth"});}
+function upd(){$("amtView").textContent=$("slider").value+" 🪙";}
+function send(amt){if(!PS)return;const{f,t}=PS,sp=balances(true)[f];
+  if(amt>sp){F.rej=true;say(`Rejected! ${f} can only spend ${sp}, not ${amt}. Every node checks this before accepting a payment.`,"bad");if(!RM)$("panel").animate([{transform:"translateX(-8px)"},{transform:"translateX(8px)"},{transform:"none"}],{duration:300});return render();}
+  pending.push({from:f,to:t,amt,sig:sha256(secret[f]+f+t+amt+(txN++)).slice(0,18)});
+  say(`${f} signed a payment of ${amt} to ${t}. The signature proves it came from ${f}. It now waits in the mempool.`,"good");
+  const c=PS;PS=null;$("panel").hidden=true;fly(P(c.f),$("pool"),"🪙").then(render);render();}
+function mineClick(){if(mining)return;
+  if(!valid())return say("Miners refuse to build on a broken chain. Re-mine the red blocks first.","bad");
+  if(!pending.length)return say("Nothing to mine yet. Send a payment first.","bad");
+  const b=newBlock(pending.map(({from,to,amt})=>({from,to,amt})),+$("diff").value),tx=b.txs.slice();
+  say(`Mining block #${b.index}: searching for a nonce so the hash starts with ${"0".repeat(b.diff)}...`);
+  mine(b,tries=>{chain.push(b);pending=[];if(b.diff>=4)F.hard=true;render();$("chain").scrollLeft=1e6;
+    say(`Block #${b.index} mined after ${tries.toLocaleString()} tries. The payments are now confirmed.`,"good");
+    const el=[...document.querySelectorAll(".block")].pop();tx.forEach(t=>fly(el,P(t.to),"+"+t.amt));});}
+function remine(i){if(mining)return;const b=chain[i];if(i>0)b.prev=hashBlock(chain[i-1]);
+  say(`Re-mining block #${i}. Cheating means redoing this work for every later block too.`);
+  mine(b,t=>{say(`Block #${i} repaired (${t.toLocaleString()} tries).`,"good");render();});}
+function edit(i,j,v){chain[i].txs[j].amt=Math.max(0,Math.floor(+v)||0);F.broke=true;ripple=i;
+  say(`You changed a payment in block #${i}. Watch the red blocks spread along the chain!`,"bad");render();}
+function reset(){chain=[];pending=[];logs=[];txN=0;sel=null;PS=null;step=0;F={};prev={};$("panel").hidden=true;
+  const g=newBlock(NAMES.map(n=>({from:"Network",to:n,amt:START[n]})).filter(t=>t.amt>0),2);
+  mine(g,()=>{chain.push(g);say("Genesis block created. It hands everyone their starting tokens.");render();});}
+
+function render(){
+  const bal=balances(false),st=status(),ok=st.every(s=>s.ok),bi=st.findIndex(s=>!s.ok);
+  $("people").innerHTML=NAMES.map(n=>`<div class="person ${sel===n?"sel":""}" draggable="true" tabindex="0" role="button" data-n="${n}" aria-label="${n}, ${bal[n]} tokens"><div class="av">${AV[n]}</div><b>${n}</b><div class="mono">${addr(n)}</div><div class="bal ${prev[n]!==undefined&&prev[n]!==bal[n]?"bump":""}">${bal[n]} 🪙</div></div>`).join("");
+  prev={...bal};
+  $("poolTx").innerHTML=pending.length?pending.map(t=>`<span class="chip" title="signature ${t.sig}">${AV[t.from]} ${t.amt} → ${AV[t.to]}</span>`).join(""):'<div class="mono" style="margin-top:6px">Empty</div>';
+  $("zeros").textContent='"'+"0".repeat(+$("diff").value)+'"';$("odds").textContent=`(about 1 guess in ${(16**+$("diff").value).toLocaleString()} works)`;
+  $("mineBtn").disabled=mining;$("resetBtn").disabled=mining;
+  $("status").className="pill "+(ok?"ok":"bad");$("status").textContent=ok?"Chain valid ✓":`Broken at block #${bi}`;
+  $("chain").innerHTML=chain.map((b,i)=>{const s=st[i];return(i?`<div class="link" title="${s.linkOk?"Link intact":"Link broken"}">${s.linkOk?"🔗":"💥"}</div>`:"")+
+    `<div class="block ${s.ok?"":"bad"}" style="--d:${Math.max(0,i-ripple)*.25}s"><h3>Block #${b.index}${i?"":" (genesis)"}</h3>
+    ${b.txs.map((t,j)=>`<div>${AV[t.from]||"🏦"} → ${AV[t.to]} <input type="number" value="${t.amt}" aria-label="Amount block ${i} payment ${j}" onchange="edit(${i},${j},this.value)"></div>`).join("")}
+    <div class="kv">Nonce <span class="mono">${b.nonce}</span></div><div class="kv">Previous <span class="mono">${short(b.prev)}</span></div><div class="kv">Hash <span class="mono">${short(b.hash)}</span></div>
+    ${!s.ownOk?'<div class="flag">Contents changed: hash no longer matches</div>':!s.linkOk?'<div class="flag">Previous block changed: link broken</div>':""}
+    ${s.ok?"":`<p style="margin:8px 0 0"><button ${mining?"disabled":""} onclick="remine(${i})">Re-mine</button></p>`}</div>`}).join("");
+  $("log").innerHTML=logs.map(l=>`<div class="${l.c}">${l.m}</div>`).join("")||'<div class="mono">Your actions appear here.</div>';
+  if(!mining)while(step<LESSONS.length&&LESSONS[step].ok()){step++;if(step===LESSONS.length){confetti();say("You finished every lesson! You now understand transactions, mining and tamper-proofing.","good");}}
+  $("coach").hidden=!guide;
+  $("coachText").textContent=step<LESSONS.length?LESSONS[step].t:"🎉 All done! Keep experimenting in sandbox mode.";
+  $("dots").innerHTML=LESSONS.map((_,i)=>`<i class="${i<step?"d":i===step?"c":""}"></i>`).join("");
+  $("skipBtn").hidden=step>=LESSONS.length;
+  document.querySelectorAll(".pulse").forEach(e=>e.classList.remove("pulse"));
+  if(guide&&step<LESSONS.length)document.querySelectorAll(LESSONS[step].tg).forEach(e=>e.classList.add("pulse"));
+}
+
+const pe=$("people");
+pe.onclick=e=>{const c=e.target.closest(".person");if(c)pick(c.dataset.n)};
+pe.onkeydown=e=>{const c=e.target.closest(".person");if(c&&(e.key==="Enter"||e.key===" ")){e.preventDefault();pick(c.dataset.n)}};
+pe.ondragstart=e=>{const c=e.target.closest(".person");if(c){e.dataTransfer.setData("text/plain",c.dataset.n);e.dataTransfer.effectAllowed="move"}};
+pe.ondragover=e=>{const c=e.target.closest(".person");if(c){e.preventDefault();c.classList.add("over")}};
+pe.ondragleave=e=>{const c=e.target.closest(".person");if(c)c.classList.remove("over")};
+pe.ondrop=e=>{e.preventDefault();const c=e.target.closest(".person"),f=e.dataTransfer.getData("text/plain");if(c&&f&&f!==c.dataset.n&&!mining){sel=null;openSend(f,c.dataset.n);render()}};
+$("slider").oninput=upd;$("goBtn").onclick=()=>send(+$("slider").value);$("overBtn").onclick=()=>send(999);
+$("cancelBtn").onclick=()=>{PS=null;$("panel").hidden=true};
+$("mineBtn").onclick=mineClick;$("resetBtn").onclick=reset;$("diff").oninput=render;
+$("skipBtn").onclick=()=>{step++;render()};$("hideBtn").onclick=()=>{guide=false;render()};
+$("glBtns").innerHTML=Object.keys(GLOSS).map(k=>`<button class="ghost" data-k="${k}">${k}</button>`).join("");
+$("glBtns").onclick=e=>{const k=e.target.dataset.k;if(k)$("gloss").textContent=k+": "+GLOSS[k]};
+reset();
+</script>
+</body>
+</html>

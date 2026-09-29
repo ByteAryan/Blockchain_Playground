@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MyToken dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+<style>
+  :root { --bg:#eef1f5; --card:#fff; --ink:#14213d; --muted:#5b6478; --line:#d5dbe6; --accent:#2f5bea; --warn:#b45309; --ok:#15803d; --bad:#b91c1c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 "Segoe UI",system-ui,sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:32px 20px 64px; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  h2 { font-size:18px; margin:0 0 12px; }
+  p.sub { margin:0 0 24px; color:var(--muted); }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:20px; margin-bottom:16px; }
+  section.owner { border-color:var(--warn); }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  input { flex:1 1 200px; padding:10px 12px; border:1px solid var(--line); border-radius:6px; font:inherit; min-width:0; }
+  button { padding:10px 16px; border:0; border-radius:6px; background:var(--accent); color:#fff; font:inherit; font-weight:600; cursor:pointer; }
+  button.secondary { background:#fff; color:var(--ink); border:1px solid var(--line); }
+  button:focus-visible, input:focus-visible { outline:3px solid #9db4ff; outline-offset:1px; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .balance { font-size:40px; font-weight:700; margin:0; word-break:break-all; }
+  dl { display:grid; grid-template-columns:max-content 1fr; gap:6px 16px; margin:16px 0 0; }
+  dt { color:var(--muted); } dd { margin:0; word-break:break-all; }
+  #status { min-height:24px; margin-top:8px; font-weight:600; }
+  .ok { color:var(--ok); } .bad { color:var(--bad); } .info { color:var(--muted); }
+  .hint { color:var(--muted); font-size:14px; margin:8px 0 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Token dashboard</h1>
+  <p class="sub">Check your balance, send, burn and manage a deployed ERC-20 token.</p>
+
+  <section>
+    <h2>1. Connect</h2>
+    <div class="row">
+      <input id="addr" placeholder="Token contract address (0x...)" aria-label="Token contract address">
+      <button id="connectBtn">Connect wallet</button>
+    </div>
+    <p class="hint">Paste the address printed by the deploy script, then connect MetaMask. Your wallet must be on the same network as the contract.</p>
+    <dl id="info" hidden>
+      <dt>Account</dt><dd id="acct"></dd>
+      <dt>Network</dt><dd id="net"></dd>
+      <dt>Total supply</dt><dd id="supply"></dd>
+      <dt>Contract owner</dt><dd id="owner"></dd>
+      <dt>Status</dt><dd id="paused"></dd>
+    </dl>
+  </section>
+
+  <section id="wallet" hidden>
+    <h2>Your balance</h2>
+    <p class="balance"><span id="bal">0</span> <span id="sym"></span></p>
+  </section>
+
+  <section id="actions" hidden>
+    <h2>Send tokens</h2>
+    <div class="row">
+      <input id="to" placeholder="Recipient address" aria-label="Recipient address">
+      <input id="amt" type="number" min="0" step="any" placeholder="Amount" aria-label="Amount to send">
+      <button id="sendBtn">Send</button>
+    </div>
+    <h2 style="margin-top:20px">Burn tokens</h2>
+    <div class="row">
+      <input id="burnAmt" type="number" min="0" step="any" placeholder="Amount to burn" aria-label="Amount to burn">
+      <button id="burnBtn" class="secondary">Burn</button>
+    </div>
+    <p class="hint">Burning permanently removes tokens from your balance and the total supply.</p>
+  </section>
+
+  <section id="ownerBox" class="owner" hidden>
+    <h2>Owner controls</h2>
+    <div class="row">
+      <input id="mintTo" placeholder="Mint to address" aria-label="Mint to address">
+      <input id="mintAmt" type="number" min="0" step="any" placeholder="Amount" aria-label="Amount to mint">
+      <button id="mintBtn">Mint</button>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button id="pauseBtn" class="secondary">Pause transfers</button>
+      <button id="unpauseBtn" class="secondary">Resume transfers</button>
+    </div>
+  </section>
+
+  <div id="status" role="status" aria-live="polite"></div>
+</main>
+
+<script>
+const ABI = [
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
+  "function decimals() view returns (uint8)",
+  "function totalSupply() view returns (uint256)",
+  "function balanceOf(address) view returns (uint256)",
+  "function owner() view returns (address)",
+  "function paused() view returns (bool)",
+  "function transfer(address,uint256) returns (bool)",
+  "function burn(uint256)",
+  "function mint(address,uint256)",
+  "function pause()",
+  "function unpause()"
+];
+const $ = (id) => document.getElementById(id);
+let provider, signer, token, account, decimals = 18, symbol = "";
+
+$("addr").value = localStorage.getItem("tokenAddress") || "";
+
+function say(msg, cls = "info") { const s = $("status"); s.textContent = msg; s.className = cls; }
+const fmt = (v) => ethers.formatUnits(v, decimals);
+const parse = (v) => ethers.parseUnits(String(v), decimals);
+function reason(e) {
+  return e.reason || e.shortMessage || (e.info && e.info.error && e.info.error.message) || e.message || "Transaction failed";
+}
+
+async function connect() {
+  try {
+    if (!window.ethereum) return say("MetaMask not found. Install the MetaMask extension and reload.", "bad");
+    const address = $("addr").value.trim();
+    if (!ethers.isAddress(address)) return say("Enter a valid contract address that starts with 0x.", "bad");
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = await provider.getSigner();
+    account = await signer.getAddress();
+    if ((await provider.getCode(address)) === "0x")
+      return say("No contract at that address on this network. Check the address and your MetaMask network.", "bad");
+    localStorage.setItem("tokenAddress", address);
+    token = new ethers.Contract(address, ABI, signer);
+    decimals = Number(await token.decimals());
+    symbol = await token.symbol();
+    $("title").textContent = (await token.name()) + " dashboard";
+    ["info", "wallet", "actions"].forEach((id) => ($(id).hidden = false));
+    await refresh();
+    say("Connected.", "ok");
+  } catch (e) { say(reason(e), "bad"); }
+}
+
+async function refresh() {
+  const net = await provider.getNetwork();
+  const [bal, supply, owner, paused] = await Promise.all([
+    token.balanceOf(account), token.totalSupply(), token.owner(), token.paused()
+  ]);
+  $("acct").textContent = account;
+  $("net").textContent = net.name + " (chain " + net.chainId + ")";
+  $("supply").textContent = fmt(supply) + " " + symbol;
+  $("owner").textContent = owner;
+  $("paused").textContent = paused ? "Transfers paused" : "Transfers active";
+  $("bal").textContent = fmt(bal);
+  $("sym").textContent = symbol;
+  $("ownerBox").hidden = owner.toLowerCase() !== account.toLowerCase();
+}
+
+async function run(label, fn) {
+  try {
+    say(label + ": confirm in MetaMask...");
+    const tx = await fn();
+    say(label + ": waiting for confirmation...");
+    await tx.wait();
+    await refresh();
+    say(label + " complete.", "ok");
+  } catch (e) { say(label + " failed: " + reason(e), "bad"); }
+}
+
+$("connectBtn").onclick = connect;
+$("sendBtn").onclick = () => run("Send", () => token.transfer($("to").value.trim(), parse($("amt").value)));
+$("burnBtn").onclick = () => run("Burn", () => token.burn(parse($("burnAmt").value)));
+$("mintBtn").onclick = () => run("Mint", () => token.mint($("mintTo").value.trim(), parse($("mintAmt").value)));
+$("pauseBtn").onclick = () => run("Pause", () => token.pause());
+$("unpauseBtn").onclick = () => run("Resume", () => token.unpause());
+
+if (window.ethereum) {
+  window.ethereum.on("accountsChanged", () => location.reload());
+  window.ethereum.on("chainChanged", () => location.reload());
+}
+</script>
+</body>
+</html>
